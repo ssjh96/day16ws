@@ -42,5 +42,55 @@ public class BoardgameService {
 
         return response;
     }
-    
+
+    public JsonObject getBoardgame(String boardgameId)
+    {
+        // Construct the redis key
+        String key = "boardgame:" + boardgameId;
+
+        // Retrieve the JSON String from Redis
+        String bgJsonString = valueRepo.getValue(key);
+
+        if (bgJsonString == null)
+        {
+            return null;
+        }
+
+        JsonReader jReader = Json.createReader(new StringReader(bgJsonString));
+
+        JsonObject bgJsonObject = jReader.readObject();
+        return bgJsonObject;
+    }
+
+    public JsonObject updateBoardgame(String boardgameId, String payload, boolean upsert)
+    {
+        String key = "boardgame:" + boardgameId;
+
+        // check if boardgame exist in Redis
+        String existingBoardgame = valueRepo.getValue(key);
+
+        if (existingBoardgame == null && !upsert)
+        {
+            // return null if boardgame does not exist and upsert is false
+            return null; // null response 
+        }
+
+        // Parse the payload into a JsonObject
+        JsonReader reader = Json.createReader(new StringReader(payload));
+        JsonObject boardgame = reader.readObject();
+
+         // Save the payload to Redis only if upsert=true or the boardgame exists
+        if (upsert || existingBoardgame != null)
+        {
+            valueRepo.createValue(key, boardgame.toString());
+        }
+
+        // Create the response JSON object
+        JsonObject response = Json.createObjectBuilder()
+            .add("update_count", 1)
+            .add("id", key)
+            .build();
+
+        return response;
+    }
 }
